@@ -1,8 +1,11 @@
 import csv
 import datetime
-
+# define file names
 filename_readfrom = "FLT.csv"
 filename_writeto = "PRF.csv"
+# define time range that will determine flight groupings
+TIME_INTERVAL_HOUR = 1
+TIME_INTERVAL_MIN = 30
 
 # Open and create file readers
 f1 = open(filename_readfrom)
@@ -57,16 +60,26 @@ def within_5(datetime1, datetime2, time_interval_hour, time_interval_min):
 
 # create flight class to group flights and their attributes
 class Flight:
-    # engine serial number, the first flight instance, list of grouped flights, and corresponding error
-    def __init__(self, esn, first_instance, flight_list, error_indicator):
+    # engine serial number, range of times in the flight, list of grouped flights, and corresponding error
+    def __init__(self, esn, start_datetime, end_datetime, flight_list, error_indicator):
         self.esn = esn
-        self.first_instance = first_instance
+        self.start_datetime = start_datetime
+        self.end_datetime = end_datetime
         self.flight_list = flight_list
         self.error_indicator = error_indicator
 
         # list attributes of grouped flight instances
         def characteristics():
             return flight_list, error_indicator
+
+
+# function for grouping flights based on time instances
+def group_flights(flt_list, prf_list):
+    # create empty list for flight objects to be placed
+    grouped_flights = []
+
+
+
 
 
 # errorlist = []
