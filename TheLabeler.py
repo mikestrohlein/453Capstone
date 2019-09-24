@@ -1,5 +1,6 @@
 import csv
 import datetime
+
 # define file names
 filename_readfrom = "FLT.csv"
 filename_writeto = "PRF.csv"
@@ -33,6 +34,8 @@ for line2 in csv_f2:
 f1.close()
 f2.close()
 
+del serial_date_listprf[0]
+del serial_date_listflt[0]
 
 # accepts two strings from lists created and time interval which indicates range for same flight
 def within_5(datetime1, datetime2, time_interval_hour, time_interval_min):
@@ -77,10 +80,19 @@ class Flight:
 def group_flights(flt_list, prf_list):
     # create empty list for flight objects to be placed
     grouped_flights = []
+    for element in prf_list:
+        date_tester1 = element[1].split()
+        empty_flight_list = []
+        empty_error = "NONE"
+        engine_num = element[0]
+        ff1 = Flight(engine_num, element[1], element[1], empty_flight_list, empty_error)
 
-
-
-
+        for element1 in prf_list:
+            if ff1.esn == element1[0] and within_5(element[1], element1[1], TIME_INTERVAL_HOUR,
+                                                   TIME_INTERVAL_MIN) and element1 not in ff1.flight_list:
+                ff1.flight_list.append(element)
+        grouped_flights.append(ff1)
+        print(ff1.flight_list)
 
 # errorlist = []
 # j = 0
@@ -103,6 +115,4 @@ def group_flights(flt_list, prf_list):
 #         writer.writerow(element3)
 # csvFile.close()
 
-test1 = '12/31/2017 13:28'
-test2 = '12/31/2017 12:00'
-within_5(test1, test2, 1, 30)
+group_flights(serial_date_listflt[:10], serial_date_listprf[:10])
