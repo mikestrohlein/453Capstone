@@ -2,7 +2,7 @@ import csv
 import datetime
 
 # define file names
-filename_readfrom = "FLT.csv"
+filename_readfrom = "FLTtester.csv"
 filename_writeto = "Testgrouping.csv"
 # define time range that will determine flight groupings
 TIME_INTERVAL_HOUR = 1
@@ -38,7 +38,9 @@ del serial_date_listprf[0]
 del serial_date_listprf[-1]
 del serial_date_listflt[0]
 
-print(serial_date_listprf)
+print(serial_date_listflt)
+
+
 def convertdt(datetime1):
     date_tester1 = datetime1.split()
     first_test = datetime.datetime(int(date_tester1[0].split('/')[2]), int(date_tester1[0].split('/')[0]),
@@ -100,6 +102,15 @@ def group_flights(prf_list):
     return grouped_flight_list
 
 
+def assign_errors(grouped_flight_list1, flt_list):
+    for element in grouped_flight_list1:
+        for row in flt_list:
+            if element.esn == row[0] and (
+                    within_5(element.start_datetime, row[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN) or within_5(
+                    element.end_datetime, row[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN)):
+                element.error_indicator = row[2]
+                print("yes")
+
 
 # errorlist = []
 # j = 0
@@ -123,5 +134,6 @@ def group_flights(prf_list):
 # csvFile.close()
 
 answer = group_flights(serial_date_listprf)
+assign_errors(answer, serial_date_listflt)
 for piece in answer:
     print(piece.esn, piece.start_datetime, piece.end_datetime, piece.flight_list, piece.error_indicator)
