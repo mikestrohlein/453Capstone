@@ -3,7 +3,7 @@ import datetime
 
 # define file names
 filename_readfrom = "FLT.csv"
-filename_writeto = "PRF.csv"
+filename_writeto = "Testgrouping.csv"
 # define time range that will determine flight groupings
 TIME_INTERVAL_HOUR = 1
 TIME_INTERVAL_MIN = 30
@@ -35,20 +35,24 @@ f1.close()
 f2.close()
 
 del serial_date_listprf[0]
+del serial_date_listprf[-1]
 del serial_date_listflt[0]
+
+print(serial_date_listprf)
+def convertdt(datetime1):
+    date_tester1 = datetime1.split()
+    first_test = datetime.datetime(int(date_tester1[0].split('/')[2]), int(date_tester1[0].split('/')[0]),
+                                   int(date_tester1[0].split('/')[1]), int(date_tester1[1].split(':')[0]),
+                                   int(date_tester1[1].split(':')[1]))
+
+    return first_test
+
 
 # accepts two strings from lists created and time interval which indicates range for same flight
 def within_5(datetime1, datetime2, time_interval_hour, time_interval_min):
     # split date and time by the space between them
-    date_tester1 = datetime1.split()
-    date_tester2 = datetime2.split()
-    # input date and time from split string to create datetime objects
-    first_test = datetime.datetime(int(date_tester1[0].split('/')[2]), int(date_tester1[0].split('/')[0]),
-                                   int(date_tester1[0].split('/')[1]), int(date_tester1[1].split(':')[0]),
-                                   int(date_tester1[1].split(':')[1]))
-    second_test = datetime.datetime(int(date_tester2[0].split('/')[2]), int(date_tester2[0].split('/')[0]),
-                                    int(date_tester2[0].split('/')[1]), int(date_tester2[1].split(':')[0]),
-                                    int(date_tester2[1].split(':')[1]))
+    first_test = convertdt(datetime1)
+    second_test = convertdt(datetime2)
     # find difference between times ensuring positive result
     if second_test > first_test:
         answer = second_test - first_test
@@ -71,28 +75,31 @@ class Flight:
         self.flight_list = flight_list
         self.error_indicator = error_indicator
 
-        # list attributes of grouped flight instances
-        def characteristics():
-            return flight_list, error_indicator
-
 
 # function for grouping flights based on time instances
-def group_flights(flt_list, prf_list):
-    # create empty list for flight objects to be placed
-    grouped_flights = []
+def group_flights(prf_list):
+    grouped_flight_list = []
+    already_added = []
+    i = 0
     for element in prf_list:
-        date_tester1 = element[1].split()
-        empty_flight_list = []
-        empty_error = "NONE"
-        engine_num = element[0]
-        ff1 = Flight(engine_num, element[1], element[1], empty_flight_list, empty_error)
+        if i not in already_added:
+            grouped_flight_list.append(Flight(element[0], element[1], element[1], [], "NONE"))
+            already_added.append(i)
+            j = 0
+            for row in prf_list:
+                if element[0] == row[0] and within_5(element[1], row[1], TIME_INTERVAL_HOUR,
+                                                     TIME_INTERVAL_MIN):
+                    grouped_flight_list[-1].flight_list.append(row)
+                    already_added.append(j)
+                    if convertdt(row[1]) < convertdt(grouped_flight_list[-1].start_datetime):
+                        grouped_flight_list[-1].start_datetime = row[1]
+                    if convertdt(row[1]) > convertdt(grouped_flight_list[-1].end_datetime):
+                        grouped_flight_list[-1].end_datetime = row[1]
+                j += 1
+        i += 1
+    return grouped_flight_list
 
-        for element1 in prf_list:
-            if ff1.esn == element1[0] and within_5(element[1], element1[1], TIME_INTERVAL_HOUR,
-                                                   TIME_INTERVAL_MIN) and element1 not in ff1.flight_list:
-                ff1.flight_list.append(element)
-        grouped_flights.append(ff1)
-        print(ff1.flight_list)
+
 
 # errorlist = []
 # j = 0
@@ -115,4 +122,6 @@ def group_flights(flt_list, prf_list):
 #         writer.writerow(element3)
 # csvFile.close()
 
-group_flights(serial_date_listflt[:10], serial_date_listprf[:10])
+answer = group_flights(serial_date_listprf)
+for piece in answer:
+    print(piece.esn, piece.start_datetime, piece.end_datetime, piece.flight_list, piece.error_indicator)
