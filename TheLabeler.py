@@ -2,8 +2,8 @@ import csv
 import datetime
 
 # define file names
-filename_readfrom = "FLTtester.csv"
-filename_writeto = "Testgrouping.csv"
+filename_readfrom = "FLT.csv"
+filename_writeto = "PRF.csv"
 # define time range that will determine flight groupings
 TIME_INTERVAL_HOUR = 1
 TIME_INTERVAL_MIN = 30
@@ -35,10 +35,9 @@ f1.close()
 f2.close()
 
 del serial_date_listprf[0]
-del serial_date_listprf[-1]
 del serial_date_listflt[0]
 
-print(serial_date_listflt)
+
 
 
 def convertdt(datetime1):
@@ -77,39 +76,43 @@ class Flight:
         self.flight_list = flight_list
         self.error_indicator = error_indicator
 
+class Engine:
+    def __init__(self, esn, list_flights):
+        self.esn = esn
+        self.list_flights = list_flights
 
-# function for grouping flights based on time instances
+# function for grouping flights based on time instances, assumes organized by time
 def group_flights(prf_list):
     grouped_flight_list = []
-    already_added = []
     i = 0
     for element in prf_list:
-        if i not in already_added:
+        if i == 0:
             grouped_flight_list.append(Flight(element[0], element[1], element[1], [], "NONE"))
-            already_added.append(i)
-            j = 0
-            for row in prf_list:
-                if element[0] == row[0] and within_5(element[1], row[1], TIME_INTERVAL_HOUR,
-                                                     TIME_INTERVAL_MIN):
-                    grouped_flight_list[-1].flight_list.append(row)
-                    already_added.append(j)
-                    if convertdt(row[1]) < convertdt(grouped_flight_list[-1].start_datetime):
-                        grouped_flight_list[-1].start_datetime = row[1]
-                    if convertdt(row[1]) > convertdt(grouped_flight_list[-1].end_datetime):
-                        grouped_flight_list[-1].end_datetime = row[1]
-                j += 1
+        else:
+            if grouped_flight_list[-1].esn == element[0] and (within_5(grouped_flight_list[-1].start_datetime, element[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN) or within_5(grouped_flight_list[-1].end_datetime, element[1], TIME_INTERVAL_HOUR,TIME_INTERVAL_MIN)):
+                grouped_flight_list[-1].flight_list.append(element)
+                if convertdt(element[1]) < convertdt(grouped_flight_list[-1].start_datetime):
+                    grouped_flight_list[-1].start_datetime = element[1]
+                if convertdt(element[1]) > convertdt(grouped_flight_list[-1].end_datetime):
+                    grouped_flight_list[-1].end_datetime = element[1]
+            else:
+                grouped_flight_list.append(Flight(element[0], element[1], element[1], [], "NONE"))
         i += 1
     return grouped_flight_list
 
+def group_engines(grouped_flight_list):
+    engine_list = []
+    temp_list_e = []
+    for element in grouped_flight_list:
+        if element.esn not in temp_list_e:
+            engine_list.append(Engine(element.esn, []))
+            temp_list_e.append(element.esn)
+    for flight in grouped_flight_list:
+        for engine in engine_list:
+            if engine.esn == flight.esn:
+                engine.list_flights.append(flight)
+    return engine_list
 
-def assign_errors(grouped_flight_list1, flt_list):
-    for element in grouped_flight_list1:
-        for row in flt_list:
-            if element.esn == row[0] and (
-                    within_5(element.start_datetime, row[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN) or within_5(
-                    element.end_datetime, row[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN)):
-                element.error_indicator = row[2]
-                print("yes")
 
 
 # errorlist = []
@@ -134,6 +137,7 @@ def assign_errors(grouped_flight_list1, flt_list):
 # csvFile.close()
 
 answer = group_flights(serial_date_listprf)
-assign_errors(answer, serial_date_listflt)
-for piece in answer:
-    print(piece.esn, piece.start_datetime, piece.end_datetime, piece.flight_list, piece.error_indicator)
+answer2 = group_engines(answer)
+
+for piece in answer2:
+    print(piece.esn)
