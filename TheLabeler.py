@@ -29,7 +29,7 @@ serial_date_listprf = []
 
 # read relevant features from file into list as tuples
 for line2 in csv_f2:
-    addition2 = (line2[0], line2[2])
+    addition2 = (line2[0], line2[2], line2)
     serial_date_listprf.append(addition2)
 
 # close files
@@ -129,7 +129,10 @@ def assign_errors(grouped_engines, flt_list):
                             flight.end_datetime, row[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN):
                         flight.error_indicator.append(row[2])
 
-
+# answer = group_flights(serial_date_listprf[:2])
+# for piece in answer:
+#     for row in piece.flight_list:
+#         print(str(row[2]).replace("'", "").strip("[").strip("]"))
 
 answer = group_flights(serial_date_listprf)
 answer2 = group_engines(answer)
@@ -139,9 +142,11 @@ assign_errors(answer2, serial_date_listflt)
 print("--- %s seconds ---" % (time.time() - start_time))
 
 
-file1 = open("myfile.csv", "w")
+file1 = open("myfile2.csv", "w")
 for engine in answer2:
     for flight in engine.list_flights:
-        file1.write(flight.esn + "," + flight.start_datetime + "," + flight.end_datetime + "," + str(flight.error_indicator).replace("'", "").strip("[").strip("]") + "\n")
+        for row in flight.flight_list:
+            file1.write(str(row[2]).replace("'", "").strip("[").strip("]") + "," + str(flight.error_indicator).replace("'", "").strip("[").strip("]") + "\n")
+        # file1.write(flight.esn + "," + flight.start_datetime + "," + flight.end_datetime + "," + str(flight.error_indicator).replace("'", "").strip("[").strip("]") + "\n")
 
 file1.close()  # to change file access modes
