@@ -1,6 +1,8 @@
 import csv
 import datetime
+import time
 
+start_time = time.time()
 # define file names
 filename_readfrom = "FLT.csv"
 filename_writeto = "PRF.csv"
@@ -36,8 +38,6 @@ f2.close()
 
 del serial_date_listprf[0]
 del serial_date_listflt[0]
-
-
 
 
 def convertdt(datetime1):
@@ -76,10 +76,12 @@ class Flight:
         self.flight_list = flight_list
         self.error_indicator = error_indicator
 
+
 class Engine:
     def __init__(self, esn, list_flights):
         self.esn = esn
         self.list_flights = list_flights
+
 
 # function for grouping flights based on time instances, assumes organized by time
 def group_flights(prf_list):
@@ -87,18 +89,22 @@ def group_flights(prf_list):
     i = 0
     for element in prf_list:
         if i == 0:
-            grouped_flight_list.append(Flight(element[0], element[1], element[1], [], "NONE"))
+            grouped_flight_list.append(Flight(element[0], element[1], element[1], [], []))
         else:
-            if grouped_flight_list[-1].esn == element[0] and (within_5(grouped_flight_list[-1].start_datetime, element[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN) or within_5(grouped_flight_list[-1].end_datetime, element[1], TIME_INTERVAL_HOUR,TIME_INTERVAL_MIN)):
+            if grouped_flight_list[-1].esn == element[0] and (
+                    within_5(grouped_flight_list[-1].start_datetime, element[1], TIME_INTERVAL_HOUR,
+                             TIME_INTERVAL_MIN) or within_5(grouped_flight_list[-1].end_datetime, element[1],
+                                                            TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN)):
                 grouped_flight_list[-1].flight_list.append(element)
                 if convertdt(element[1]) < convertdt(grouped_flight_list[-1].start_datetime):
                     grouped_flight_list[-1].start_datetime = element[1]
                 if convertdt(element[1]) > convertdt(grouped_flight_list[-1].end_datetime):
                     grouped_flight_list[-1].end_datetime = element[1]
             else:
-                grouped_flight_list.append(Flight(element[0], element[1], element[1], [], "NONE"))
+                grouped_flight_list.append(Flight(element[0], element[1], element[1], [], []))
         i += 1
     return grouped_flight_list
+
 
 def group_engines(grouped_flight_list):
     engine_list = []
@@ -114,30 +120,28 @@ def group_engines(grouped_flight_list):
     return engine_list
 
 
+def assign_errors(grouped_engines, flt_list):
+    for row in flt_list:
+        for engine in grouped_engines:
+            if engine.esn == row[0]:
+                for flight in engine.list_flights:
+                    if within_5(flight.start_datetime, row[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN) or within_5(
+                            flight.end_datetime, row[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN):
+                        flight.error_indicator.append(row[2])
 
-# errorlist = []
-# j = 0
-# while j < 100:
-#
-#     for element in serial_date_listprf:
-#         j = j + 1
-#         i = 0
-#         while i < len(serial_date_listflt) and i != -1:
-#             for element2 in serial_date_listflt:
-#                 i = i + 1
-#                 if element[1] == element2[1] and element[0] == element2[0]:
-#                     errorlist.append([str(element2[2])])
-#                     i = -1
-#         errorlist.append(['0'])
-#
-# with open('Output2.csv', 'w') as csvFile:
-#     writer = csv.writer(csvFile)
-#     for element3 in errorlist:
-#         writer.writerow(element3)
-# csvFile.close()
+
 
 answer = group_flights(serial_date_listprf)
 answer2 = group_engines(answer)
+assign_errors(answer2, serial_date_listflt)
 
-for piece in answer2:
-    print(piece.esn)
+
+print("--- %s seconds ---" % (time.time() - start_time))
+
+
+file1 = open("myfile.csv", "w")
+for engine in answer2:
+    for flight in engine.list_flights:
+        file1.write(flight.esn + "," + flight.start_datetime + "," + flight.end_datetime + "," + str(flight.error_indicator).replace("'", "").strip("[").strip("]") + "\n")
+
+file1.close()  # to change file access modes
