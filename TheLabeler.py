@@ -2,6 +2,9 @@ import csv
 import datetime
 import time
 
+today = datetime.datetime.now()
+filler = str(today).replace(" ", "_").split(".")[0].replace(":", "--")
+
 start_time = time.time()
 # define file names
 filename_readfrom = "FLT.csv"
@@ -134,6 +137,7 @@ def assign_errors(grouped_engines, flt_list):
 #     for row in piece.flight_list:
 #         print(str(row[2]).replace("'", "").strip("[").strip("]"))
 
+
 answer = group_flights(serial_date_listprf)
 answer2 = group_engines(answer)
 assign_errors(answer2, serial_date_listflt)
@@ -142,11 +146,11 @@ assign_errors(answer2, serial_date_listflt)
 print("--- %s seconds ---" % (time.time() - start_time))
 
 
-file1 = open("myfile2.csv", "w")
+file1 = open("labelrun__" + filler + ".csv", "w")
 for engine in answer2:
     for flight in engine.list_flights:
         for row in flight.flight_list:
-            file1.write(str(row[2]).replace("'", "").strip("[").strip("]") + "," + str(flight.error_indicator).replace("'", "").strip("[").strip("]") + "\n")
-        # file1.write(flight.esn + "," + flight.start_datetime + "," + flight.end_datetime + "," + str(flight.error_indicator).replace("'", "").strip("[").strip("]") + "\n")
+            # file1.write(str(row[2]).replace("'", "").strip("[").strip("]") + "," + str(flight.error_indicator).replace("'", "").strip("[").strip("]") + "\n")
+            file1.write(flight.esn + "," + flight.start_datetime + "," + flight.end_datetime + "," + str(flight.error_indicator).replace("'", "").strip("[").strip("]") + "\n")
 
 file1.close()  # to change file access modes
