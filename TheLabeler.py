@@ -1,6 +1,7 @@
 import csv
 import datetime
 import time
+from playsound import playsound
 
 start_time = time.time()
 # define file names
@@ -201,12 +202,19 @@ def runit(serial_prf_list, serial_flt_list, mode):
 
 
 # track the time it took to run the program and record it in a separate csv file
-def track_time():
+def track_time(sound):
     print("--- %s seconds ---" % (time.time() - start_time))
     filetrack = open("listofruntimes.csv", "a")
     filetrack.write(str(time.time() - start_time) + "\n")
+    # 1: plays sound upon completion
+    # 0: no sound played
+    if sound == 1:
+        playsound('R2D2-yeah.wav')
 
 
 runit(serial_date_listprf, serial_date_listflt, 1)
-track_time()
+track_time(0)
+
+
+
 # metadata_check(serial_date_listprf)
