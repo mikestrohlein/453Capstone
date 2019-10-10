@@ -7,22 +7,27 @@ start_time = time.time()
 # define file names
 filename_readfrom = "FLT.csv"
 filename_writeto = "PRF.csv"
+error_codes = "ErrorCodes.csv"
 # define time range that will determine flight groupings
 TIME_INTERVAL_HOUR = 1
 TIME_INTERVAL_MIN = 30
 
+GROUNDING_ERRORS = []
+
 # Open and create file readers
 f1 = open(filename_readfrom)
 f2 = open(filename_writeto)
+f3 = open(error_codes)
 csv_f1 = csv.reader(f1)
 csv_f2 = csv.reader(f2)
+csv_f3 = csv.reader(f3)
 
 # initialize empty list
 serial_date_listflt = []
 
 # read relevant features from file into list as tuples
 for line in csv_f1:
-    addition = (line[0], line[2], line[8])
+    addition = (line[0], line[2], line[8], line[7])
     serial_date_listflt.append(addition)
 
 # initialize empty list
@@ -33,9 +38,15 @@ for line2 in csv_f2:
     addition2 = (line2[0], line2[2], line2)
     serial_date_listprf.append(addition2)
 
+error_code_list = []
+for line3 in csv_f3:
+    addition3 = (line3[0], line3[1], line3[3])
+    error_code_list.append(addition3)
+
 # close files
 f1.close()
 f2.close()
+f3.close()
 
 # delete column titles so it does not interfere with the matching of these files
 del serial_date_listprf[0]
@@ -72,12 +83,12 @@ def within_5(datetime1, datetime2, time_interval_hour, time_interval_min):
 # create flight class to group flights and their attributes
 class Flight:
     # engine serial number, range of times in the flight, list of grouped flights, and corresponding error
-    def __init__(self, esn, start_datetime, end_datetime, flight_list, error_indicator):
+    def __init__(self, esn, start_datetime, end_datetime, flight_list, error):
         self.esn = esn
         self.start_datetime = start_datetime
         self.end_datetime = end_datetime
         self.flight_list = flight_list
-        self.error_indicator = error_indicator
+        self.error = error
 
 
 # create engine class to group engines and the flights that correspond to it
@@ -87,6 +98,31 @@ class Engine:
         self.list_flights = list_flights
 
 
+class Error:
+    def __init__(self, code, name, severity, code_list, name_list, severity_list):
+        self.code = code
+        self.name = name
+        self.severity = severity
+        self.code_list = code_list
+        self.name_list = name_list
+        self.severity_list = severity_list
+
+    def finalize(self):
+        i = 0
+        max_value = -99999999
+        max_index = -99999999
+        for element in self.severity_list:
+            if int(element) > int(max_value):
+                max_index = i
+                max_value = element
+            i += 1
+        if int(max_index) < -999 or int(max_value) < -999:
+            max_index = 0
+        self.code = self.code_list[int(max_index)]
+        self.name = self.name_list[int(max_index)]
+        self.severity = self.severity_list[int(max_index)]
+
+
 # function for grouping flights based on time instances, assumes organized by time
 def group_flights(prf_list):
     grouped_flight_list = []
@@ -94,7 +130,7 @@ def group_flights(prf_list):
     for element in prf_list:
         if i == 0:
             # on the first instance a flight object must be initiated
-            grouped_flight_list.append(Flight(element[0], element[1], element[1], [], []))
+            grouped_flight_list.append(Flight(element[0], element[1], element[1], [], Error(0, "Blank", -1, [], [], [])))
             grouped_flight_list[-1].flight_list.append(element)
         else:
             # if the esn is the same as the last flight and the time corresponds: add the current instance to the
@@ -111,7 +147,7 @@ def group_flights(prf_list):
                     grouped_flight_list[-1].end_datetime = element[1]
             else:
                 # otherwise initialize a new flight object and add it to the list of flight objects
-                grouped_flight_list.append(Flight(element[0], element[1], element[1], [], []))
+                grouped_flight_list.append(Flight(element[0], element[1], element[1], [], Error(0, "Blank", -1, [], [], [])))
                 grouped_flight_list[-1].flight_list.append(element)
 
         i += 1
@@ -145,7 +181,24 @@ def assign_errors(grouped_engines, flt_list):
                     # checks if error instance lines up with a flight in the engine object
                     if within_5(flight.start_datetime, row[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN) or within_5(
                             flight.end_datetime, row[1], TIME_INTERVAL_HOUR, TIME_INTERVAL_MIN):
-                        flight.error_indicator.append(row[2])
+                        flight.error.name_list.append(row[2])
+                        flight.error.code_list.append(row[3])
+
+
+def update_errors(error_list, grouped_engines):
+    added = False
+    for engine in grouped_engines:
+        for flight in engine.list_flights:
+            flight_error_codes = flight.error.code_list
+            for element in flight_error_codes:
+                added = False
+                for row in error_list:
+                    if row[0] == element:
+                        flight.error.severity_list.append(row[2])
+                        added = True
+                if not added:
+                    flight.error.severity_list.append(0)
+            flight.error.finalize()
 
 
 # checks size of instances per flight (labeled flight number)
@@ -178,6 +231,7 @@ def runit(serial_prf_list, serial_flt_list, mode):
     answer = group_flights(serial_date_listprf)
     answer2 = group_engines(answer)
     assign_errors(answer2, serial_date_listflt)
+    update_errors(error_code_list, answer2)
 
     # gets today's date and current time then turns it to a string
     today = datetime.datetime.now()
@@ -187,34 +241,25 @@ def runit(serial_prf_list, serial_flt_list, mode):
     file1 = open("C:/Users/C20Michael.Strohlein/Desktop/Labeler Runs/labelrun__m" + str(mode) + "__" + filler + ".csv", "w")
     for engine in answer2:
         for flight in engine.list_flights:
+            # mode 2: esn, start, end, error
+            if mode == 2:
+                file1.write(flight.esn + "," + flight.start_datetime + "," + flight.end_datetime + "," + str(
+                    flight.error.name) + "," + str(flight.error.code) + "," + str(flight.error.severity) + "\n")
             for row in flight.flight_list:
                 # mode 1: preserve flight instances
                 if mode == 1:
                     file1.write(
-                        str(row[2]).replace("'", "").strip("[").strip("]") + "," + str(flight.error_indicator).replace(
-                            "'", "").strip("[").strip("]") + "\n")
-                # mode 2: esn, start, end, error
-                if mode == 2:
-                    file1.write(flight.esn + "," + flight.start_datetime + "," + flight.end_datetime + "," + str(
-                        flight.error_indicator).replace("'", "").strip("[").strip("]") + "\n")
-
-    file1.close()  # to change file access modes
+                        str(row[2]).replace("'", "").strip("[").strip("]") + "," + str(flight.error.name) + "," + str(flight.error.code) + "," + str(flight.error.severity) + "\n")
+    file1.close()
 
 
 # track the time it took to run the program and record it in a separate csv file
-def track_time(sound):
+def track_time():
     print("--- %s seconds ---" % (time.time() - start_time))
     filetrack = open("listofruntimes.csv", "a")
     filetrack.write(str(time.time() - start_time) + "\n")
-    # 1: plays sound upon completion
-    # 0: no sound played
-    if sound == 1:
-        playsound('R2D2-yeah.wav')
 
 
-runit(serial_date_listprf, serial_date_listflt, 1)
-track_time(0)
+runit(serial_date_listprf, serial_date_listflt, 2)
+track_time()
 
-
-
-# metadata_check(serial_date_listprf)
